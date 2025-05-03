@@ -1,4 +1,4 @@
-# frontend
+# GodysEye Frontend
 
 ## Project setup
 ```
@@ -13,6 +13,11 @@ npm run serve
 ### Compiles and minifies for production
 ```
 npm run build
+```
+
+### To deploy the changes to backend
+```
+npm run deploy
 ```
 
 ### Lints and fixes files
