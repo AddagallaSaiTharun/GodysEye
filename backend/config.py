@@ -1,0 +1,6 @@
+UPLOAD_DIR="uploaded_videos"
+SECRET_KEY="your_secret_key"
+ALGORITHM="HS256"
+FRAME_DIR="video_db"
+MISSING_FRAME_DIR="video_db_missing"
+REGISTERD_PHOTO_DIR="missing_person"

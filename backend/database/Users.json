@@ -1,0 +1,30 @@
+[
+  {
+    "first_name": "M.Varun",
+    "last_name": "Merugu",
+    "email": "varun.merugu1212@gmail.com",
+    "password": "$argon2id$v=19$m=65536,t=3,p=4$dtZU1GFlGn10Vyd6IN2Xpw$/YifU4Oq7CINFpnZFY7j1ogIwBDCHpRAWl+xJ4KpkJY",
+    "id": "asdfghjklashbdsas"
+  },
+  {
+    "first_name": "M.Varun",
+    "last_name": "Merugu",
+    "email": "varun.merugu@gmail.com",
+    "password": "$argon2id$v=19$m=65536,t=3,p=4$xEPBUFn79cYBI3Z8s0UF6A$RCdzXlffVNjstyks9DHP+xyOx2YdeAJ/HrJXb6nFhfA",
+    "id": "asdfghjklashbdsaskjasbdkjsabsa"
+  },
+  {
+    "first_name": "addagalla",
+    "last_name": "Sai Tharun",
+    "email": "saitharun12dav@gmail.com",
+    "password": "$argon2id$v=19$m=65536,t=3,p=4$d1emEZu3T4z5rX9fj5K2iw$ncrx8120PvhMdrynCPb9vGUmv0SGwdbDBiDb+a/mQVw",
+    "id": "447cc97f-4812-4a5c-accb-b3ff0ae92753"
+  },
+  {
+    "first_name": "asdd",
+    "last_name": "qwertyui",
+    "email": "saitharun13dav@gmail.com",
+    "password": "$argon2id$v=19$m=65536,t=3,p=4$z9zIzH2KaqTGwE4PTmK9uA$fmlCWVhuPSifbU/vo98JlMvGc8+SNbCf9qBXwx+/L7I",
+    "id": "4152c080-031d-4cf3-9359-3608b316658f"
+  }
+]

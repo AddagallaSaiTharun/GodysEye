@@ -1,0 +1,13 @@
+opencv-python==4.11.0.86
+facenet-pytorch==2.6.0
+ultralytics==8.3.107
+argon2-cffi==23.1.0
+python-jose==3.4.0
+fastapi==0.115.11
+pydantic==2.10.6
+uvicorn==0.34.0
+python-multipart
+pydantic[email]
+pillow
+numpy
+torch

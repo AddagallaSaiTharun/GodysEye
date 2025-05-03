@@ -1,0 +1,34 @@
+.venv
+**/__pycache__
+debug
+**/dist
+**/video_db
+**/video_db_missing
+backend/missing.mp4
+backend/Screenshot 2025-04-20 192931.png
+backend/yolov11n-face.pt
+
+
+.DS_Store
+node_modules
+/dist
+
+
+# local env files
+.env.local
+.env.*.local
+
+# Log files
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Editor directories and files
+.idea
+.vscode
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
