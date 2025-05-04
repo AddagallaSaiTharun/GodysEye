@@ -1,6 +1,6 @@
 from fastapi import HTTPException, Header
 from jose import jwt, JWTError
-import config
+from app.utilities import config
 
 def get_current_user(authorization: str = Header(...)):
     if not authorization.startswith("Bearer "):

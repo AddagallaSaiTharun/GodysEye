@@ -1,7 +1,7 @@
 from PIL import Image
 import numpy as np
 import cv2
-import jwt
+from jose import jwt
 from datetime import datetime, timedelta
 from app.utilities.logger_config import logger
 from app.utilities import config

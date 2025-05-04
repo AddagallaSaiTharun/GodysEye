@@ -40,7 +40,7 @@ def store_missing(uuid, vector):
         documents=[f"Missing person {uuid}"]  # Optional description
     )
 
-def search_missing(vector, cam_id, top_k=5, threshold=0.75):
+def search_missing(vector, top_k=5, threshold=0.75):
     client = chromadb.Client(Settings())
     collection = client.get_or_create_collection(name="face_vectors")
     # Perform similarity search
@@ -56,7 +56,6 @@ def search_missing(vector, cam_id, top_k=5, threshold=0.75):
             metadata = results['metadatas'][0][idx]
             match = {
                 "frame_id": metadata.get("frame_id"),
-                "cam_id": metadata.get("cam_id", cam_id),
                 "timestamp": metadata.get("timestamp"),
                 "box": metadata.get("bbox")
             }

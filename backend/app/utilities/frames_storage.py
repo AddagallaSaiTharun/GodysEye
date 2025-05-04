@@ -2,7 +2,7 @@ import os
 import cv2
 import uuid
 import json
-import config
+from app.utilities import config
 import datetime
 from PIL import Image
 from app.utilities.logger_config import logger

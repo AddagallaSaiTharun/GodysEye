@@ -1,10 +1,15 @@
-# database.py
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from models import Base
+from app.database_sqlite.models.all_models import Base
+import os
 
-# Create a SQLite engine
-engine = create_engine("sqlite:///faceDetection.db", echo=True)
+# Ensure the database folder exists
+db_dir = 'database'
+os.makedirs(db_dir, exist_ok=True)
+
+# Create a SQLite engine with the database located inside the 'database' folder
+db_path = os.path.join(db_dir, 'faceDetection.db')
+engine = create_engine(f"sqlite:///{db_path}", echo=True)
 
 # Create all tables
 Base.metadata.create_all(engine)

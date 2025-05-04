@@ -73,7 +73,7 @@ export default {
       setTimeout(() => this.removeToast(newId), 2000);
     },
     logout(){
-      localStorage.removeItem("token")
+      localStorage.removeItem("token");
       this.token=null
       this.addToast({ id: Date.now(), message: "Logged out successfully", color: "bg-success" });
     },
@@ -82,8 +82,9 @@ export default {
       this.token=localStorage.getItem("token");
     },
     clossingUser(data){
+      localStorage.removeItem("token");
+      this.token=null;
       this.addToast(data);
-      this.token=localStorage.getItem("token");
     }
   }
 }

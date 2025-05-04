@@ -29,13 +29,6 @@
           <img v-if="photoPreview" :src="photoPreview" alt="Photo Preview" style="display: block; max-width: 100%;max-height: 30vh; margin-top: 10px;" />
         </div>
 
-        <div class="form-group">
-          <label for="video">Person Video (Optional)</label>
-          <input type="file" @change="handleFileChange('video', $event)" accept="video/*" />
-          <span v-if="formErrors.video" class="error">Please upload a valid video file.</span>
-          <video v-if="videoPreview" :src="videoPreview" controls style="max-width: 100%;max-height: 30vh; margin-top: 10px;"/>
-        </div>
-
         <button type="submit" :disabled="load">Submit Report</button>
       </form>
     </div>
@@ -52,17 +45,14 @@ export default {
         last_name: '',
         details: '',
         photo: null,
-        video: null,
       },
       formErrors: {
         first_name: false,
         last_name: false,
         details: false,
         photo: false,
-        video: false,
       },
       photoPreview: null,
-      videoPreview: null,
       load:false,
       token: localStorage.getItem("token")
     };
@@ -71,7 +61,8 @@ export default {
     if (!this.token) {
       this.$router.push("/login");
       const newId = Date.now();
-      this.$emit("show-toast", { id: newId, message: "Unauthorized Access! Please Login", color: "bg-danger" });
+      this.$emit("unathorized", { id: newId, message: "Unauthorized Access! Please Login", color: "bg-danger" });
+      return;
     }
   },
   methods: {
@@ -88,17 +79,6 @@ export default {
         } else {
           this.photoPreview = null;
         }
-      } else if (type === 'video') {
-        if (file && file.type.startsWith('video/')) {
-          const reader = new FileReader();
-          reader.onload = () => {
-            this.videoPreview = reader.result;
-          };
-          reader.readAsDataURL(file);
-          this.form.video = file;
-        } else {
-          this.videoPreview = null;
-        }
       }
     },
     async submitForm() {
@@ -107,7 +87,6 @@ export default {
       this.formErrors.last_name = !this.form.last_name.trim();
       this.formErrors.details = !this.form.details.trim();
       this.formErrors.photo = !this.form.photo || !this.form.photo.type.startsWith('image/');
-      this.formErrors.video = this.form.video && !this.form.video.type.startsWith('video/');
 
       if (Object.values(this.formErrors).includes(true)) {
         return;
@@ -118,13 +97,10 @@ export default {
       formData.append("last_name", this.form.last_name);
       formData.append("details", this.form.details);
       formData.append("photo", this.form.photo);
-      if (this.form.video) {
-        formData.append("video", this.form.video);
-      }
 
       try {
         this.load=true;
-        const response = await fetch("http://127.0.0.1:8000/missing_persons", {
+        const response = await fetch("/api/register_missing_person", {
           method: "POST",
           headers: {
             "Authorization": `Bearer ${this.token}`
@@ -137,9 +113,8 @@ export default {
           this.$emit("show-toast", { id: newId, message: "Data sent successfully", color: "bg-success" });
           this.resetForm();
         } else if(response.status === 401){
-          localStorage.removeItem("token");
-          this.$emit("show-toast", { id: newId, message: "Unauthorized Access! Please Login", color: "bg-danger" });
           this.$router.push("/login");
+          this.$emit("unathorized", { id: newId, message: "Unauthorized Access! Please Login", color: "bg-danger" });
         } else {
           this.$emit("show-toast", { id: newId, message: "Something went wrong. Please try again.", color: "bg-warning" });
         }
@@ -157,17 +132,14 @@ export default {
         first_name: '',
         details: '',
         photo: null,
-        video: null,
       };
       this.formErrors = {
         last_name: false,
         first_name: false,
         details: false,
         photo: false,
-        video: false,
       };
       this.photoPreview = null;
-      this.videoPreview = null;
     }
   }
 };

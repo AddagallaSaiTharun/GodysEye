@@ -14,17 +14,15 @@ from app.utilities.frames_storage import Video_FramesStorage
 from app.utilities.validation import get_current_user 
 from app.utilities.yolo_facenet import Model
 from app.utilities import config
-from app.database_sqlite.models import MissingPersons, MissingPersonsFrame, User
-from app.database_sqlite.db import get_db
-from app.database_sqlite import engine
-from app.database_sqlite.models.all_models import Base
+from app.database_sqlite.models.all_models import MissingPersons, MissingPersonsFrame, User, Base
+from app.database_sqlite.schemas.all_schemas import RegisterUser, LoginUser
+from app.database_sqlite.db import get_db,engine
 from app.utilities.helper import draw_box, create_access_token
 from fastapi.middleware.cors import CORSMiddleware
 from app.utilities.logger_config import logger
 from datetime import timedelta
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
-from app.database_sqlite.schemas.all_schemas import RegisterUser, LoginUser
 from app.utilities.vector_storage import store_and_search_missing
 
 
@@ -136,6 +134,7 @@ def login_user(login_data: LoginUser, db: Session = Depends(get_db)):
     """
 
     try:
+        logger.info("Attempting to login user with email: %s", login_data.email)
         # Retrieve user from database using email
         user_in_db = db.query(User).filter(User.email == login_data.email).first()
 
@@ -255,7 +254,7 @@ async def register_missing_person(
 
         # Generate unique ID and extract face vector
         missing_person_id = str(uuid.uuid4())
-        face_model = Model()
+        face_model = Model(config.MODEL_PATH)
         face_vector = face_model.vectorize_face(image)
 
         if face_vector is None:
@@ -282,9 +281,10 @@ async def register_missing_person(
         logger.info("Stored face vector and retrieved %d potential matches", len(potential_matches))
 
         # Log any frames that matched
-        for match in potential_matches:
+        for i,match in enumerate(potential_matches):
             frame = MissingPersonsFrame(
                 missing_person_id=missing_person_id,
+                missing_frame_id=i,
                 frame_id=match["frame_id"],
                 cam_id=match["cam_id"],
                 timestamp=match["timestamp"],
@@ -313,8 +313,8 @@ async def register_missing_person(
 async def get_missing_person_frame(
     user_id: str = Depends(get_current_user),
     missing_person_id: str = Query(None, description="filter by Missing person ID to retrieve frames"),
-    camera_id: str = Query(0, description="Filter by camera ID(default to 0) to retrieve frames from specific camera"),
-    frame_id: str = Query(0, description="Filter by Frame ID(default to 0) to retrieve specific frame"),
+    camera_id: str = Query(None, description="Filter by camera ID(default to 0) to retrieve frames from specific camera"),
+    frame_id: str = Query("frame_0", description="Filter by Frame ID(default to frame_0) to retrieve specific frame"),
     start_date: str = Query(None),
     end_date: str = Query(None),
     start_timestamp: str = Query(None),
@@ -350,6 +350,8 @@ async def get_missing_person_frame(
             result = [
                 {
                     "id": person.missing_person_id,
+                    "first_name": person.first_name,
+                    "last_name" : person.last_name,
                     "name": f"{person.first_name}, {person.last_name}",
                     "details": person.details
                 }
@@ -361,6 +363,23 @@ async def get_missing_person_frame(
                 status_code=status.HTTP_200_OK
             )
 
+        camera_ids = db.query(MissingPersonsFrame.cam_id)\
+            .filter_by(missing_person_id=missing_person_id)\
+            .distinct()\
+            .all()
+        camera_ids = [cam_id[0] for cam_id in camera_ids]
+
+        if not camera_ids:
+            logger.warning(f"No cameras found for person_id={missing_person_id}")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="No cameras found for given ID."
+            )
+
+        if not camera_id:
+            logger.info("Returning missing persons list and camera names.")
+            camera_id = camera_ids[0] if camera_ids else None
+
         # Count total frames for the person in this camera
         total_frames = db.query(MissingPersonsFrame).filter_by(
             missing_person_id=missing_person_id,
@@ -371,11 +390,11 @@ async def get_missing_person_frame(
         frame = db.query(MissingPersonsFrame).filter_by(
             missing_person_id=missing_person_id,
             cam_id=camera_id,
-            frame_id=frame_id
+            missing_frame_id=frame_id
         ).first()
 
         if not frame:
-            logger.warning(f"No frame found for person_id={missing_person_id}, camera_id={camera_id}, frame_id={frame_id}")
+            logger.warning(f"No frame found for person_id={missing_person_id}, camera_id={camera_id}, missing_frame_id={frame_id}")
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Frame not found for given ID and camera."
@@ -417,11 +436,12 @@ async def get_missing_person_frame(
                 "message": "Frame data retrieved successfully.",
                 "data": {
                     "frame_id": frame.frame_id,
-                    "camera_id": frame.cam_id,
+                    "present_camera": frame.cam_id,
                     "missing_person_id": frame.missing_person_id,
                     "frame_image": f"data:image/jpeg;base64,{encoded_frame_image}",
                     "registered_photo": f"data:image/jpeg;base64,{encoded_registered_photo}",
                     "total_frames": total_frames,
+                    "camera_names": camera_ids
                 }
             },
             status_code=status.HTTP_200_OK
@@ -443,10 +463,10 @@ async def get_missing_person_frame(
 ############################
 
 # Upload video for processing
-@app.post("/api/upload_video/")
+@app.post("/api/upload_video")
 async def upload_video_only(
+    user_id: str = Depends(get_current_user),
     video_file: UploadFile = File(..., description="MP4 video file to be uploaded."),
-    user_id: str = Depends(get_current_user)
 ):
     """
     Upload and process an MP4 video to extract frames for facial recognition.

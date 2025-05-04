@@ -5,8 +5,8 @@
       <input type="text" class="w-100 text-center" placeholder="Search" v-model="searchText" />
       <div v-for="(name, index) in filteredNames" :key="index">
         <button class="person-button w-100 text-center" :class="{ clicked: clickedIndex === index }"
-          @click="setClickedButton(index, name.uuid)">
-          {{ name.first_name }}, {{ name.last_name }}
+          @click="setClickedButton(index, name.id)">
+          {{ name.name }}
         </button>
       </div>
     </div>
@@ -108,10 +108,10 @@ export default {
     },
   },
   async mounted() {
-    this.names = await this.get_names();
-    console.log(this.names);
+    let data = await this.get_names();
+    this.names = data['persons'];
   },
-  created() {
+  beforeMount() {
     if (!this.token) {
       this.$router.push("/login");
       localStorage.removeItem("token")
@@ -128,7 +128,7 @@ export default {
         console.log("last");
         return;
       }
-      let data = await this.get_person_details(this.names[this.clickedIndex]['uuid']);
+      let data = await this.get_person_details(this.names[this.clickedIndex]['id']);
       this.cameras = data['data']['camera_names'];
       this.photoUrl = data['data']['frame_image'];
       this.registeredPhoto = data['data']['registered_photo'];
@@ -141,7 +141,7 @@ export default {
         this.frame_id = 0;
         return;
       }
-      let data = await this.get_person_details(this.names[this.clickedIndex]['uuid']);
+      let data = await this.get_person_details(this.names[this.clickedIndex]['id']);
       this.cameras = data['data']['camera_names'];
       this.photoUrl = data['data']['frame_image'];
       this.registeredPhoto = data['data']['registered_photo'];
@@ -160,16 +160,19 @@ export default {
       this.total_frames = data['data']['total_frames']
     },
     async get_names() {
+      // const query = new URLSearchParams({
+      //   camera_id: "0",
+      //   frame_id: "frame_0",
+      // });
+
       try {
-        const response = await fetch("http://127.0.0.1:8000/persons", {
+        const response = await fetch(`/api/missing_person_frame`, {
           method: "GET",
           headers: {
             "Content-Type": "application/json",
             "authorization": `Bearer ${this.token}`,
           },
         });
-
-        console.log(await response);
         if (response.status === 401) {
           // Handle unauthorized: remove token & redirect
           localStorage.removeItem("token");
@@ -186,8 +189,11 @@ export default {
     },
 
     async get_person_details(id) {
+      const query = new URLSearchParams({
+        missing_person_id: id,
+      });
       try {
-        const response = await fetch(`http://127.0.0.1:8000/persons?frame_id=${this.frame_id}&id=${id}`, {
+        const response = await fetch(`/api/missing_person_frame?${query}`, {
           method: "GET",
           headers: {
             "Content-Type": "application/json",
