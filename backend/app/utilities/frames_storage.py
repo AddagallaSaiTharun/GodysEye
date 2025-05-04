@@ -12,13 +12,13 @@ class Video_FramesStorage:
     cam_id_counter = 0  # class variable to track camera IDs
 
     def __init__(self, detection_model=None):
-        self.detction_model = detection_model
+        self.detection_model = detection_model
         self.cam_id = Video_FramesStorage.cam_id_counter
         Video_FramesStorage.cam_id_counter += 1
         self.FRAME_DIR = os.path.join(config.FRAME_DIR, f"cam-{self.cam_id}")
         os.makedirs(self.FRAME_DIR, exist_ok=True)
 
-    def extract_frames(self, video_path):
+    async def extract_frames(self, video_path):
         if not os.path.exists(video_path):
             logger.error(f"Video file {video_path} does not exist.")
             return False
@@ -42,9 +42,9 @@ class Video_FramesStorage:
             pil_image = Image.fromarray(image_rgb)
 
             # Get bounding boxes using YOLO
-            boxes = self.detction_model.bounding_boxes(pil_image)
+            boxes = self.detection_model.bounding_boxes(pil_image)
             if boxes:  # if faces are detected
-                vectors = self.detction_model.vectorize_faces(pil_image)
+                vectors = self.detection_model.vectorize_faces(pil_image)
                 cv2.imwrite(frame_filename, frame)  # Save the frame
 
                 # Call the external function with all required info

@@ -46,7 +46,7 @@ class Model:
         faces = self.crop_images(image, self.bounding_boxes(image))
         vectors = [self.vectorize_face(face) for face in faces]
         # return np.array(vectors)
-        logger.info("Length of Vecs : ",len(vectors))
+        logger.debug(f"Length of Vecs : {len(vectors)}")
         return vectors
     
 

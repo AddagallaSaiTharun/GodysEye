@@ -1,11 +1,14 @@
 import chromadb
-from chromadb.config import Settings
+from chromadb import PersistentClient
 
+
+client = PersistentClient(
+    path="./database/chroma_db" 
+)
 
 def store_frame_vectors(cam_id, frame_id, bounding_boxes, vectors, timestamp):
     
     # Initialize Chroma client and collection
-    client = chromadb.Client(Settings())
     collection = client.get_or_create_collection(name="face_vectors")
 
     for idx, (vector, bbox) in enumerate(zip(vectors, bounding_boxes)):
@@ -14,7 +17,10 @@ def store_frame_vectors(cam_id, frame_id, bounding_boxes, vectors, timestamp):
         metadata = {
             "cam_id": cam_id,
             "frame_id": frame_id,
-            "bbox": bbox,
+            "x": bbox[0],
+            "y": bbox[1],
+            "h": bbox[2],
+            "w": bbox[3],
             "timestamp": timestamp
         }
 
@@ -26,13 +32,11 @@ def store_frame_vectors(cam_id, frame_id, bounding_boxes, vectors, timestamp):
         )
 
 def store_missing(uuid, vector):
-    client = chromadb.Client(Settings())
     collection = client.get_or_create_collection(name="missing_person")
 
     metadata = {
         "person_id": uuid
     }
-
     collection.add(
         ids=[uuid],                  # Unique ID for each person
         embeddings=[vector],         # Face vector (embedding)
@@ -40,8 +44,7 @@ def store_missing(uuid, vector):
         documents=[f"Missing person {uuid}"]  # Optional description
     )
 
-def search_missing(vector, top_k=5, threshold=0.75):
-    client = chromadb.Client(Settings())
+def search_missing(vector, cam_id, top_k=5, threshold=0.75):
     collection = client.get_or_create_collection(name="face_vectors")
     # Perform similarity search
     results = collection.query(
@@ -56,8 +59,9 @@ def search_missing(vector, top_k=5, threshold=0.75):
             metadata = results['metadatas'][0][idx]
             match = {
                 "frame_id": metadata.get("frame_id"),
+                "cam_id": metadata.get("cam_id", cam_id),
                 "timestamp": metadata.get("timestamp"),
-                "box": metadata.get("bbox")
+                "box": [metadata.get("x"),metadata.get("y"),metadata.get("h"),metadata.get("w")]
             }
             matches.append(match)
     return matches

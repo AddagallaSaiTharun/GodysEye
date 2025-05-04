@@ -463,10 +463,10 @@ async def get_missing_person_frame(
 ############################
 
 # Upload video for processing
-@app.post("/api/upload_video")
+@app.post("/api/upload_video",status_code=status.HTTP_201_CREATED)
 async def upload_video_only(
-    user_id: str = Depends(get_current_user),
     video_file: UploadFile = File(..., description="MP4 video file to be uploaded."),
+
 ):
     """
     Upload and process an MP4 video to extract frames for facial recognition.
@@ -484,7 +484,7 @@ async def upload_video_only(
     """
     # Validate video file type
     if video_file.content_type != "video/mp4":
-        logger.warning(f"[User: {user_id}] Invalid video format: {video_file.content_type}")
+        # logger.warning(f"[User: {user_id}] Invalid video format: {video_file.content_type}")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Only MP4 videos are accepted."
@@ -501,42 +501,40 @@ async def upload_video_only(
         with open(temp_video_path, "wb") as output_file:
             shutil.copyfileobj(video_file.file, output_file)
 
-        logger.info(f"[User: {user_id}] Video uploaded and saved to: {temp_video_path}")
+        # logger.info(f"[User: {user_id}] Video uploaded and saved to: {temp_video_path}")
 
         # Initialize detection model and extract frames
-        detector_model = Model()
+        detector_model = Model(config.MODEL_PATH)
         frame_extractor = Video_FramesStorage(detection_model=detector_model)
 
-        logger.info(f"[User: {user_id}] Beginning frame extraction.")
-        extraction_success = frame_extractor.extract_frames(temp_video_path)
+        # logger.info(f"[User: {user_id}] Beginning frame extraction.")
+        extraction_success = await frame_extractor.extract_frames(temp_video_path)
 
         if not extraction_success:
-            logger.error(f"[User: {user_id}] Frame extraction failed for video: {video_file.filename}")
+            # logger.error(f"[User: {user_id}] Frame extraction failed for video: {video_file.filename}")
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Frame extraction failed."
             )
 
-        logger.info(f"[User: {user_id}] Video processed successfully. Camera ID: {frame_extractor.cam_id}")
-        return JSONResponse(
-            status_code=status.HTTP_202_ACCEPTED,
-            content={
-                "message": "Video processed successfully.",
-                "camera_id": frame_extractor.cam_id
-            }
-        )
+        # logger.info(f"[User: {user_id}] Video processed successfully. Camera ID: {frame_extractor.cam_id}")
+        return {
+            "message": "Video processed successfully.",
+            "camera_id": frame_extractor.cam_id
+        }
 
     except Exception as err:
-        logger.exception(f"[User: {user_id}] Error occurred while processing video: {err}")
+        # logger.exception(f"[User: {user_id}] Error occurred while processing video: {str(err)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="An error occurred while processing the video. Please try again later."
+            detail=f"Internal server error: {str(err)}"
         )
 
     finally:
         # Clean up: Remove temporary file and release resources
         if os.path.exists(temp_video_path):
             os.remove(temp_video_path)
+            os.remove(temp_video_dir)
             logger.debug(f"Temporary video file removed: {temp_video_path}")
 
         if detector_model:

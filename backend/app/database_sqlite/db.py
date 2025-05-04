@@ -4,12 +4,12 @@ from app.database_sqlite.models.all_models import Base
 import os
 
 # Ensure the database folder exists
-db_dir = 'database'
+db_dir = 'database/sql_db'
 os.makedirs(db_dir, exist_ok=True)
 
 # Create a SQLite engine with the database located inside the 'database' folder
 db_path = os.path.join(db_dir, 'faceDetection.db')
-engine = create_engine(f"sqlite:///{db_path}", echo=True)
+engine = create_engine(f"sqlite:///{db_path}")
 
 # Create all tables
 Base.metadata.create_all(engine)

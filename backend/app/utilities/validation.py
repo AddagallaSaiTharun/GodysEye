@@ -1,8 +1,11 @@
-from fastapi import HTTPException, Header
+from fastapi import Depends, HTTPException, Header
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from jose import jwt, JWTError
 from app.utilities import config
 
-def get_current_user(authorization: str = Header(...)):
+security = HTTPBearer()
+
+def get_current_user(authorization: HTTPAuthorizationCredentials = Depends(security)):
     if not authorization.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Invalid token")
 
