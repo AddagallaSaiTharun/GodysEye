@@ -11,3 +11,6 @@ pydantic[email]
 pillow
 numpy
 torch
+SQLAlchemy
+passlib
+chromadb

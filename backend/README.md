@@ -73,7 +73,7 @@ If required, download FaceNet weights (if they aren’t auto-downloaded by your 
 ## 7️⃣ Start FastAPI Server
 
 ```bash
-uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+uvicorn faceDetection:app --host 0.0.0.0 --port 8000 --reload
 ```
 
 ## 8️⃣ Optional: Run Cleanup Script
