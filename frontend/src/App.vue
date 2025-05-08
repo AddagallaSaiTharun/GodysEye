@@ -137,7 +137,4 @@ body {
   display: block;
 }
 
-::-webkit-scrollbar {
-  width: 0px;
-}
 </style>

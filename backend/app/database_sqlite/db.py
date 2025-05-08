@@ -4,7 +4,7 @@ from app.database_sqlite.models.all_models import Base
 import os
 
 # Ensure the database folder exists
-db_dir = 'database/sql_db'
+db_dir = 'databases/sql_db'
 os.makedirs(db_dir, exist_ok=True)
 
 # Create a SQLite engine with the database located inside the 'database' folder

@@ -5,7 +5,7 @@
       <input type="text" class="w-100 text-center" placeholder="Search" v-model="searchText" />
       <div v-for="(name, index) in filteredNames" :key="index">
         <button class="person-button w-100 text-center" :class="{ clicked: clickedIndex === index }"
-          @click="setClickedButton(index, name.id)">
+          @click="setClickedButton(index)">
           {{ name.name }}
         </button>
       </div>
@@ -28,7 +28,7 @@
       <div class="w-100 px-3">
         <div class="mb-3">
           <label class="form-label">Registered Photo:</label>
-          <img :src="registeredPhoto" alt="Frame" style="max-height: 100%; max-width: 100%" />
+          <img :src="registeredPhoto" alt="Frame" style="max-height: 100px; max-width: 100px" />
         </div>
         <div class="mb-3">
           <label class="form-label">From Date:</label>
@@ -92,7 +92,7 @@ export default {
       searchText: "",
       token: localStorage.getItem("token"),
       registeredPhoto: "",
-      frame_id: 1,
+      frame_id: 0,
       total_frames: 0
     };
   },
@@ -122,49 +122,23 @@ export default {
   },
   methods: {
     async nextFrame() {
-      this.frame_id += 1;
-      if (this.frame_id >= this.total_frames) {
-        this.frame_id = this.total_frames;
+      if (this.frame_id + 1 > this.total_frames) {
         console.log("last");
         return;
       }
-      let data = await this.get_person_details(this.names[this.clickedIndex]['id']);
-      this.cameras = data['data']['camera_names'];
-      this.photoUrl = data['data']['frame_image'];
-      this.registeredPhoto = data['data']['registered_photo'];
-      this.selectedCamera = data['data']['present_camera'];
+      this.frame_id += 1;
     },
     async prevFrame() {
-      this.frame_id -= 1;
-      if (this.frame_id <= 0) {
+      if (this.frame_id - 1 < 0) {
         console.log("first");
-        this.frame_id = 0;
         return;
       }
-      let data = await this.get_person_details(this.names[this.clickedIndex]['id']);
-      this.cameras = data['data']['camera_names'];
-      this.photoUrl = data['data']['frame_image'];
-      this.registeredPhoto = data['data']['registered_photo'];
-      this.selectedCamera = data['data']['present_camera'];
-
+      this.frame_id -= 1;
     },
-    async setClickedButton(index, id) {
+    setClickedButton(index) {
       this.clickedIndex = index;
-      let data = await this.get_person_details(id);
-      console.log(data);
-      this.frame_id = 1;
-      this.cameras = data['data']['camera_names'];
-      this.photoUrl = data['data']['frame_image'];
-      this.registeredPhoto = data['data']['registered_photo'];
-      this.selectedCamera = data['data']['present_camera'];
-      this.total_frames = data['data']['total_frames']
     },
     async get_names() {
-      // const query = new URLSearchParams({
-      //   camera_id: "0",
-      //   frame_id: "frame_0",
-      // });
-
       try {
         const response = await fetch(`/api/missing_person_frame`, {
           method: "GET",
@@ -187,10 +161,47 @@ export default {
         console.error("Error fetching names:", e);
       }
     },
-
-    async get_person_details(id) {
+    async filterByClickedIndex() {
       const query = new URLSearchParams({
-        missing_person_id: id,
+        missing_person_id: this.names[this.clickedIndex]['id'],
+        frame_id: this.frame_id
+      });
+      console.log(query);
+      try {
+        const response = await fetch(`/api/missing_person_frame?${query}`, {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            "authorization": `Bearer ${this.token}`,
+          },
+        });
+
+        if (response.status === 401) {
+          // Remove token and redirect to login
+          localStorage.removeItem("token");
+          this.$router.push("/login");
+          const newId = Date.now();
+          this.$emit("unathorized", { id: newId, message: "Unauthorized Access! Please Login", color: "bg-danger" });
+          return;
+        }
+
+        let data = await response.json();
+        this.frame_id = 0;
+        this.cameras = data['data']['camera_names'];
+        this.photoUrl = data['data']['frame_image'];
+        this.registeredPhoto = data['data']['registered_photo'];
+        this.total_frames = data['data']['total_frames'];
+        this.selectedCamera = data['data']['present_camera'];
+      } catch (e) {
+        this.$emit("error", { message: "Failed to load data", color: "bg-warning" });
+        console.error("Failed to fetch person details", e);
+      }
+    },
+    async filterByCameraID() {
+      const query = new URLSearchParams({
+        missing_person_id: this.names[this.clickedIndex]['id'],
+        frame_id: this.frame_id,
+        camera_id: this.selectedCamera
       });
       try {
         const response = await fetch(`/api/missing_person_frame?${query}`, {
@@ -210,11 +221,77 @@ export default {
           return;
         }
 
-        return await response.json();
+        let data = await response.json();
+        this.frame_id = 0;
+        this.cameras = data['data']['camera_names'];
+        this.photoUrl = data['data']['frame_image'];
+        this.registeredPhoto = data['data']['registered_photo'];
+        this.total_frames = data['data']['total_frames']
       } catch (e) {
+        this.$emit("error", { message: "Failed to load data", color: "bg-warning" });
         console.error("Failed to fetch person details", e);
       }
     },
+    async filterByFrameID() {
+      const query = new URLSearchParams({
+        missing_person_id: this.names[this.clickedIndex]['id'],
+        frame_id: this.frame_id,
+        camera_id: this.selectedCamera
+      });
+      try {
+        const response = await fetch(`/api/missing_person_frame?${query}`, {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            "authorization": `Bearer ${this.token}`,
+          },
+        });
+
+        if (response.status === 401) {
+          // Remove token and redirect to login
+          localStorage.removeItem("token");
+          this.$router.push("/login");
+          const newId = Date.now();
+          this.$emit("unathorized", { id: newId, message: "Unauthorized Access! Please Login", color: "bg-danger" });
+          return;
+        }
+
+        let data = await response.json();
+        this.cameras = data['data']['camera_names'];
+        this.photoUrl = data['data']['frame_image'];
+        this.registeredPhoto = data['data']['registered_photo'];
+        this.total_frames = data['data']['total_frames'];
+      } catch (e) {
+        console.error("Failed to fetch person details", e);
+      }
+
+    },
+  },
+  watch: { 
+    selectedCamera:{
+      async handler(newVal) {
+        if (newVal !== null) {
+          await this.filterByCameraID();
+        }
+      }
+    },
+    frame_id: {
+      async handler(newVal,oldVal) {
+        if (newVal !== null && newVal <= this.total_frames && newVal>=0) {
+          await this.filterByFrameID();
+        }
+        else{
+          this.frame_id = oldVal;
+        }
+      }
+    },
+    clickedIndex: {
+      async handler(newVal) {
+        if (newVal !== null) {
+          await this.filterByClickedIndex();
+        }
+      }
+    }
   },
 };
 </script>

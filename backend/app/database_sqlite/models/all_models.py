@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Text, ForeignKey, DateTime, UniqueConstraint, LargeBinary
+from sqlalchemy import Column, Float, Integer, String, Text, ForeignKey, DateTime, UniqueConstraint, LargeBinary
 from sqlalchemy.orm import declarative_base, relationship
 from sqlalchemy.types import TypeDecorator
 import uuid
@@ -33,16 +33,12 @@ class MissingPersonsFrame(Base):
 
     missing_person_id = Column(String(36), ForeignKey("missing_persons.missing_person_id"), primary_key=True)
     frame_id = Column(Text, primary_key=True)
-    missing_frame_id = Column(Integer)
+    missing_frame_id = Column(Integer, primary_key=True)
     cam_id = Column(Text, primary_key=True)
     timestamp = Column(Text)
     box = Column(JSONList)
-
+    score = Column(Float)
     missing_person = relationship("MissingPersons", back_populates="frames")  # no change
-
-    __table_args__ = (
-        UniqueConstraint("missing_person_id", "frame_id", "cam_id", name="uix_1"),
-    )
 
 # Table 3: MissingPersons
 class MissingPersons(Base):

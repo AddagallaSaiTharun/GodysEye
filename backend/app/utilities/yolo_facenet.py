@@ -8,7 +8,7 @@ from PIL import Image
 from app.utilities.logger_config import logger
 
 class Model:
-    def __init__(self, model_path):
+    def __init__(self, model_path="C:/Users/tharu/OneDrive/Desktop/godseye/backend/yolov11l-face.pt"):
         self.yolo = YOLO(model_path)
         self.facenet = InceptionResnetV1(pretrained='vggface2').eval()
         self.transform = transforms.Compose([
@@ -24,9 +24,11 @@ class Model:
                 result.show()
         return results
 
-    def bounding_boxes(self, image: Image):
+    def bounding_boxes(self, image: Image,padding=None):
         results = self._get_results(image)
         boxes = results[0].boxes.xyxy.cpu().numpy().tolist()
+        if padding:
+            boxes = [[x + padding if i>=2 else x for i,x in enumerate(box)] for box in boxes]
         return boxes
 
     def crop_images(self, image: Image, boxes):
@@ -42,28 +44,9 @@ class Model:
             embedding = self.facenet(image_tensor)
         return embedding.numpy().squeeze().tolist()
 
-    def vectorize_faces(self, image: Image):
-        faces = self.crop_images(image, self.bounding_boxes(image))
+    def vectorize_faces(self, image: Image,padding=None):
+        faces = self.crop_images(image, self.bounding_boxes(image,padding=padding))
         vectors = [self.vectorize_face(face) for face in faces]
         # return np.array(vectors)
         logger.debug(f"Length of Vecs : {len(vectors)}")
         return vectors
-    
-
-# Bounding Boxes for faces in the image
-# Example format for bounding boxes:
-# [
-#     [x1, y1, x2, y2],  # Box 1 (face 1)
-#     [x1, y1, x2, y2],  # Box 2 (face 2)
-#     ...
-# ]
-
-
-
-# Vectors in a frame as returned by the vectorize_faces method
-# Example format for vectors:
-# [
-#     [0.123, -0.456, ..., 0.789],  # Face 1
-#     [0.111, 0.222, ..., 0.333],   # Face 2
-#     ...
-# ]

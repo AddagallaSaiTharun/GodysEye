@@ -7,18 +7,17 @@ import datetime
 from PIL import Image
 from app.utilities.logger_config import logger
 from app.utilities.vector_storage import store_frame_vectors
+from uuid import uuid4
 
 class Video_FramesStorage:
-    cam_id_counter = 0  # class variable to track camera IDs
 
     def __init__(self, detection_model=None):
         self.detection_model = detection_model
-        self.cam_id = Video_FramesStorage.cam_id_counter
-        Video_FramesStorage.cam_id_counter += 1
+        self.cam_id = str(uuid4())
         self.FRAME_DIR = os.path.join(config.FRAME_DIR, f"cam-{self.cam_id}")
         os.makedirs(self.FRAME_DIR, exist_ok=True)
 
-    async def extract_frames(self, video_path):
+    def extract_frames(self, video_path,frame_skip=5):
         if not os.path.exists(video_path):
             logger.error(f"Video file {video_path} does not exist.")
             return False
@@ -31,7 +30,10 @@ class Video_FramesStorage:
             ret, frame = cap.read()
             if not ret:
                 break
-
+            
+            if frame_id % frame_skip != 0:
+                frame_id += 1
+                continue
             seconds = frame_id / fps  # in seconds
             timestamp = str(datetime.timedelta(seconds=round(seconds, 3)))  # e.g., "0:00:03.000"
 
@@ -60,6 +62,11 @@ class Video_FramesStorage:
 
         cap.release()
         logger.info(f"Processed {frame_id} frames.")
+        try:
+            os.remove(config.UPLOAD_DIR)
+            logger.info(f"Removed the video file in path {config.UPLOAD_DIR}")
+        except Exception as e:
+            logger.error(f"Error removing video file: {e}")
         return True
 
 

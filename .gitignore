@@ -8,7 +8,9 @@ backend/missing.mp4
 backend/Screenshot 2025-04-20 192931.png
 backend/yolov11n-face.pt
 backend/logs
-backend/database
+backend/databases
+backend/demo Dataset
+backend/uploaded_videos
 
 .DS_Store
 node_modules
