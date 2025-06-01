@@ -237,7 +237,7 @@ class Video_FramesStorage:
                     frame_filename = os.path.join(self.FRAME_DIR, f"frame_{frame_id}.jpeg")
                     frame_copy = frame.copy()
 
-                    await semaphore.acquire()
+                    # await semaphore.acquire()
                     t = asyncio.create_task(
                         self._vectorize_with_semaphore(
                             semaphore=semaphore,
@@ -249,6 +249,13 @@ class Video_FramesStorage:
                     )
                     batch_tasks.append(t)
                 frame_id += 1
+
+            if not batch_tasks:
+                if not ret:
+                    break
+                else:
+                    continue
+
             # 2. Process that batch “as they finish”
             for fut in asyncio.as_completed(batch_tasks):
                 try:
