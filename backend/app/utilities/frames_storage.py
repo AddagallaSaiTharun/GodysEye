@@ -261,7 +261,7 @@ class Video_FramesStorage:
                 try:
                     result = await fut
                 except Exception as e:
-                    logger.error(f"Error in vectorization task: {e}")
+                    logger.error(f"Error in vectorization task: {e}", exc_info=True, stack_info=True)
                     continue
                 if result["boxes"]:
                     cv2.imwrite(result["frame_filename"], result["frame"])
