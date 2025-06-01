@@ -227,6 +227,7 @@ class Video_FramesStorage:
             # 1. Build one batch of up to BATCH_SIZE tasks
             batch_tasks = []
             for _ in range(config.BATCH_SIZE):
+                logger.info(f"Processing frame {frame_id}...")
                 ret, frame = cap.read()
                 if not ret:
                     break
