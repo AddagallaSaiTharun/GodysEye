@@ -17,58 +17,187 @@ class Video_FramesStorage:
         self.FRAME_DIR = os.path.join(config.FRAME_DIR, f"cam-{self.cam_id}")
         os.makedirs(self.FRAME_DIR, exist_ok=True)
 
-    async def extract_frames(self, video_path,frame_skip=5):
+    # async def extract_frames(self, video_path,frame_skip=5):
+    #     if not os.path.exists(video_path):
+    #         logger.error(f"Video file {video_path} does not exist.")
+    #         return False
+
+    #     cap = cv2.VideoCapture(video_path)
+    #     frame_id = 0
+    #     fps = cap.get(cv2.CAP_PROP_FPS)
+
+    #     while cap.isOpened():
+    #         ret, frame = cap.read()
+    #         if not ret:
+    #             break
+            
+    #         if frame_id % frame_skip != 0:
+    #             frame_id += 1
+    #             continue
+    #         seconds = frame_id / fps  # in seconds
+    #         timestamp = str(datetime.timedelta(seconds=round(seconds, 3)))  # e.g., "0:00:03.000"
+
+    #         frame_filename = os.path.join(self.FRAME_DIR, f"frame_{frame_id}.jpeg")
+
+    #         # Convert OpenCV image (BGR) to PIL image (RGB)
+    #         image_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+    #         pil_image = Image.fromarray(image_rgb)
+
+    #         # Get bounding boxes using YOLO
+    #         # boxes = await self.detection_model.bounding_boxes(pil_image)
+    #         # if boxes:  # if faces are detected
+    #         vectors, boxes = await self.detection_model.vectorize_faces(pil_image)
+    #         if boxes:
+    #             cv2.imwrite(frame_filename, frame)  # Save the frame
+
+    #             # Call the external function with all required info
+    #             store_frame_vectors(
+    #                 cam_id=f"cam-{self.cam_id}",
+    #                 frame_id=f"frame_{frame_id}",
+    #                 bounding_boxes=boxes,
+    #                 vectors=vectors,
+    #                 timestamp=timestamp
+    #             )
+
+    #         frame_id += 1
+
+    #     cap.release()
+    #     logger.info(f"Processed {frame_id} frames.")
+    #     try:
+    #         os.remove(config.UPLOAD_DIR)
+    #         logger.info(f"Removed the video file in path {config.UPLOAD_DIR}")
+    #     except Exception as e:
+    #         logger.error(f"Error removing video file: {e}")
+    #     return True
+    async def _vectorize_and_package(
+        self,
+        frame,
+        frame_id: int,
+        timestamp: str,
+        frame_filename: str,
+        padding: Optional[int] = None,
+    ) -> dict:
+        """
+        1) Converts raw OpenCV BGR `frame` → PIL Image (RGB)
+        2) Calls `self.detection_model.vectorize_faces(...)`, which now returns (vectors, boxes)
+        3) Returns a dict:
+            {
+               'frame': <the raw BGR frame buffer>,
+               'frame_id': <int>,
+               'timestamp': <"H:MM:SS.xxx">,
+               'frame_filename': <str>,
+               'boxes': <List[List[float]]>,
+               'vectors': <List[List[float]]>
+            }
+        """
+        try:
+            # 1a. Convert BGR → RGB
+            image_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            pil_image = Image.fromarray(image_rgb)
+
+            # 2. Call vectorize_faces (which must now return (vectors, boxes))
+            vectors, boxes = await self.detection_model.vectorize_faces(pil_image, padding=padding)
+            return {
+                "frame": frame,
+                "frame_id": frame_id,
+                "timestamp": timestamp,
+                "frame_filename": frame_filename,
+                "boxes": boxes,
+                "vectors": vectors,
+            }
+        except Exception as e:
+            # If something goes wrong (e.g. HTTP error, JSON parsing), we re‐raise so that
+            # extract_frames can catch it in its as_completed() loop.
+            raise RuntimeError(f"Frame {frame_id} packaging failed: {e}")
+
+
+    async def extract_frames(self, video_path: str, frame_skip: int = 5) -> bool:
+        """
+        1) Opens `video_path` via cv2.VideoCapture.
+        2) Every `frame_skip`‐th frame is turned into a PIL.Image, then
+           scheduled as an async task to call `vectorize_faces(...)`.
+        3) We collect all tasks and use `asyncio.as_completed(...)` to process
+           them as soon as they finish, writing out JPEGs + calling store_frame_vectors().
+        """
         if not os.path.exists(video_path):
             logger.error(f"Video file {video_path} does not exist.")
             return False
 
         cap = cv2.VideoCapture(video_path)
-        frame_id = 0
         fps = cap.get(cv2.CAP_PROP_FPS)
+        frame_id = 0
+        tasks = []
 
+        # 1. Loop through the video, frame by frame. For every frame where
+        #    frame_id % frame_skip == 0, create a task to vectorize it.
         while cap.isOpened():
             ret, frame = cap.read()
             if not ret:
                 break
-            
-            if frame_id % frame_skip != 0:
-                frame_id += 1
-                continue
-            seconds = frame_id / fps  # in seconds
-            timestamp = str(datetime.timedelta(seconds=round(seconds, 3)))  # e.g., "0:00:03.000"
 
-            frame_filename = os.path.join(self.FRAME_DIR, f"frame_{frame_id}.jpeg")
+            if frame_id % frame_skip == 0:
+                # Compute timestamp in "H:MM:SS.mmm" format
+                seconds = frame_id / fps
+                timestamp = str(datetime.timedelta(seconds=round(seconds, 3)))
 
-            # Convert OpenCV image (BGR) to PIL image (RGB)
-            image_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            pil_image = Image.fromarray(image_rgb)
-
-            # Get bounding boxes using YOLO
-            boxes = await self.detection_model.bounding_boxes(pil_image)
-            if boxes:  # if faces are detected
-                vectors = await self.detection_model.vectorize_faces(pil_image)
-                cv2.imwrite(frame_filename, frame)  # Save the frame
-
-                # Call the external function with all required info
-                store_frame_vectors(
-                    cam_id=f"cam-{self.cam_id}",
-                    frame_id=f"frame_{frame_id}",
-                    bounding_boxes=boxes,
-                    vectors=vectors,
-                    timestamp=timestamp
+                # Prepare a filename for saving (if/when we get boxes back)
+                frame_filename = os.path.join(
+                    self.FRAME_DIR, f"frame_{frame_id}.jpeg"
                 )
+
+                # Since OpenCV `frame` buffer will be reused on the next read,
+                # make a copy so we can carry it into the async task:
+                frame_copy = frame.copy()
+
+                # Schedule the async wrapper that calls vectorize_faces + returns metadata:
+                task = asyncio.create_task(
+                    self._vectorize_and_package(
+                        frame=frame_copy,
+                        frame_id=frame_id,
+                        timestamp=timestamp,
+                        frame_filename=frame_filename,
+                    )
+                )
+                tasks.append(task)
 
             frame_id += 1
 
         cap.release()
-        logger.info(f"Processed {frame_id} frames.")
+
+        # 2. As each vectorization finishes, process its result immediately:
+        for completed_future in asyncio.as_completed(tasks):
+            try:
+                # Each item is a dict with keys:
+                #   'frame', 'frame_id', 'timestamp', 'frame_filename', 'boxes', 'vectors'
+                result: dict = await completed_future
+            except Exception as e:
+                logger.error(f"Error in vectorization task: {e}")
+                continue
+
+            boxes = result["boxes"]
+            if boxes:
+                # There was at least one face box → save frame + store vectors
+                raw_frame = result["frame"]              # still in BGR (OpenCV) format
+                filename = result["frame_filename"]      # e.g. ".../frame_42.jpeg"
+                cv2.imwrite(filename, raw_frame)
+
+                store_frame_vectors(
+                    cam_id=f"cam-{self.cam_id}",
+                    frame_id=f"frame_{result['frame_id']}",
+                    bounding_boxes=boxes,
+                    vectors=result["vectors"],
+                    timestamp=result["timestamp"],
+                )
+
+        logger.info(f"Processed {frame_id} frames (skipping every {frame_skip}).")
+        # 3. Optionally remove the original upload
         try:
             os.remove(config.UPLOAD_DIR)
-            logger.info(f"Removed the video file in path {config.UPLOAD_DIR}")
+            logger.info(f"Removed the video file at {config.UPLOAD_DIR}")
         except Exception as e:
             logger.error(f"Error removing video file: {e}")
-        return True
 
+        return True
 
 
 
