@@ -213,69 +213,69 @@ class Video_FramesStorage:
 
     #     return True
 
-async def extract_frames(self, video_path, frame_skip=5):
-    if not os.path.exists(video_path):
-        logger.error(f"{video_path} does not exist")
-        return False
+    async def extract_frames(self, video_path, frame_skip=5):
+        if not os.path.exists(video_path):
+            logger.error(f"{video_path} does not exist")
+            return False
 
-    cap = cv2.VideoCapture(video_path)
-    fps = cap.get(cv2.CAP_PROP_FPS)
-    frame_id = 0
-    semaphore = asyncio.BoundedSemaphore(10)
+        cap = cv2.VideoCapture(video_path)
+        fps = cap.get(cv2.CAP_PROP_FPS)
+        frame_id = 0
+        semaphore = asyncio.BoundedSemaphore(10)
 
-    while cap.isOpened():
-        # 1. Build one batch of up to BATCH_SIZE tasks
-        batch_tasks = []
-        for _ in range(config.BATCH_SIZE):
-            ret, frame = cap.read()
+        while cap.isOpened():
+            # 1. Build one batch of up to BATCH_SIZE tasks
+            batch_tasks = []
+            for _ in range(config.BATCH_SIZE):
+                ret, frame = cap.read()
+                if not ret:
+                    break
+                if frame_id % frame_skip == 0:
+                    seconds = frame_id / fps
+                    timestamp = str(datetime.timedelta(seconds=round(seconds, 3)))
+                    frame_filename = os.path.join(self.FRAME_DIR, f"frame_{frame_id}.jpeg")
+                    frame_copy = frame.copy()
+
+                    await semaphore.acquire()
+                    t = asyncio.create_task(
+                        self._vectorize_with_semaphore(
+                            semaphore=semaphore,
+                            frame=frame_copy,
+                            frame_id=frame_id,
+                            timestamp=timestamp,
+                            frame_filename=frame_filename,
+                        )
+                    )
+                    batch_tasks.append(t)
+                frame_id += 1
+            # 2. Process that batch “as they finish”
+            for fut in asyncio.as_completed(batch_tasks):
+                try:
+                    result = await fut
+                except Exception as e:
+                    logger.error(f"Error in vectorization task: {e}")
+                    continue
+                if result["boxes"]:
+                    cv2.imwrite(result["frame_filename"], result["frame"])
+                    store_frame_vectors(
+                        cam_id=f"cam-{self.cam_id}",
+                        frame_id=f"frame_{result['frame_id']}",
+                        bounding_boxes=result["boxes"],
+                        vectors=result["vectors"],
+                        timestamp=result["timestamp"],
+                    )
+            # Loop back and build the next batch…
+
             if not ret:
                 break
-            if frame_id % frame_skip == 0:
-                seconds = frame_id / fps
-                timestamp = str(datetime.timedelta(seconds=round(seconds, 3)))
-                frame_filename = os.path.join(self.FRAME_DIR, f"frame_{frame_id}.jpeg")
-                frame_copy = frame.copy()
 
-                await semaphore.acquire()
-                t = asyncio.create_task(
-                    self._vectorize_with_semaphore(
-                        semaphore=semaphore,
-                        frame=frame_copy,
-                        frame_id=frame_id,
-                        timestamp=timestamp,
-                        frame_filename=frame_filename,
-                    )
-                )
-                batch_tasks.append(t)
-            frame_id += 1
-        # 2. Process that batch “as they finish”
-        for fut in asyncio.as_completed(batch_tasks):
-            try:
-                result = await fut
-            except Exception as e:
-                logger.error(f"Error in vectorization task: {e}")
-                continue
-            if result["boxes"]:
-                cv2.imwrite(result["frame_filename"], result["frame"])
-                store_frame_vectors(
-                    cam_id=f"cam-{self.cam_id}",
-                    frame_id=f"frame_{result['frame_id']}",
-                    bounding_boxes=result["boxes"],
-                    vectors=result["vectors"],
-                    timestamp=result["timestamp"],
-                )
-        # Loop back and build the next batch…
-
-        if not ret:
-            break
-
-    cap.release()
-    logger.info(f"Processed {frame_id} frames (skipping every {frame_skip}).")
-    try:
-        os.remove(config.UPLOAD_DIR)
-    except Exception as e:
-        logger.error(f"Error removing video file: {e}")
-    return True
+        cap.release()
+        logger.info(f"Processed {frame_id} frames (skipping every {frame_skip}).")
+        try:
+            os.remove(config.UPLOAD_DIR)
+        except Exception as e:
+            logger.error(f"Error removing video file: {e}")
+        return True
 
 
 
