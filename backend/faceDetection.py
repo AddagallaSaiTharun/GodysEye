@@ -255,8 +255,9 @@ async def register_missing_person(
 
         # Generate unique ID and extract face vector
         missing_person_id = str(uuid.uuid4())
-        face_model = Model(config.MODEL_PATH)
-        face_vector = face_model.vectorize_faces(image)[0]
+        face_model = Model()
+        face_vector = await face_model.vectorize_faces(image)
+        face_vector = face_vector[0]
         logger.info(f"Face vector: {face_vector}")
 
         if face_vector is None:
@@ -278,7 +279,7 @@ async def register_missing_person(
         logger.info("Missing person record stored in database: %s", missing_person_id)
 
         # Store vector in external vector DB and fetch possible matches
-        potential_matches = store_and_search_missing(person_id=missing_person_id, query_vector=face_vector,max_distance=0.75)
+        potential_matches = store_and_search_missing(person_id=missing_person_id, query_vector=face_vector,max_distance=0.1)
         logger.info(f"Stored face vector and retrieved {len(potential_matches)} potential matches")
         d = {}
         for match in potential_matches:
@@ -515,11 +516,11 @@ async def upload_video_only(
         logger.info(f"Video uploaded and saved to: {temp_video_path}")
 
         # Initialize detection model and extract frames
-        detector_model = Model(config.MODEL_PATH)
+        detector_model = Model()
         frame_extractor = Video_FramesStorage(detection_model=detector_model)
 
         logger.info(f"Beginning frame extraction.")
-        extraction_success = frame_extractor.extract_frames(temp_video_path,frame_skip)
+        extraction_success = await frame_extractor.extract_frames(temp_video_path,frame_skip)
 
         if not extraction_success:
             logger.error(f"Frame extraction failed for video: {video_file.filename}")
@@ -535,7 +536,7 @@ async def upload_video_only(
         }
 
     except Exception as err:
-        logger.exception(f"Error occurred while processing video: {str(err)}")
+        logger.exception(f"Error occurred while processing video: {str(err)}",exc_info=True,stack_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Internal server error: {str(err)}"

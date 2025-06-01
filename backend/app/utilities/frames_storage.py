@@ -17,7 +17,7 @@ class Video_FramesStorage:
         self.FRAME_DIR = os.path.join(config.FRAME_DIR, f"cam-{self.cam_id}")
         os.makedirs(self.FRAME_DIR, exist_ok=True)
 
-    def extract_frames(self, video_path,frame_skip=5):
+    async def extract_frames(self, video_path,frame_skip=5):
         if not os.path.exists(video_path):
             logger.error(f"Video file {video_path} does not exist.")
             return False
@@ -44,9 +44,9 @@ class Video_FramesStorage:
             pil_image = Image.fromarray(image_rgb)
 
             # Get bounding boxes using YOLO
-            boxes = self.detection_model.bounding_boxes(pil_image)
+            boxes = await self.detection_model.bounding_boxes(pil_image)
             if boxes:  # if faces are detected
-                vectors = self.detection_model.vectorize_faces(pil_image)
+                vectors = await self.detection_model.vectorize_faces(pil_image)
                 cv2.imwrite(frame_filename, frame)  # Save the frame
 
                 # Call the external function with all required info

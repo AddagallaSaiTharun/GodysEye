@@ -68,7 +68,7 @@ from app.utilities.logger_config import logger
 from app.utilities import config
 
 class Model:
-    def __init__(self, base_url: str = config.YOLO_SERVICE_URL):
+    def __init__(self, base_url: str = f"http://localhost:{config.YOLO_SERVICE_PORT}"):
         self.base_url = base_url.rstrip("/")
         self._client = httpx.AsyncClient()
 
