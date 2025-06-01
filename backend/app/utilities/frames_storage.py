@@ -221,7 +221,7 @@ class Video_FramesStorage:
         cap = cv2.VideoCapture(video_path)
         fps = cap.get(cv2.CAP_PROP_FPS)
         frame_id = 0
-        semaphore = asyncio.BoundedSemaphore(10)
+        semaphore = asyncio.BoundedSemaphore(config.INFLIGHT_REQUESTS)
 
         while cap.isOpened():
             # 1. Build one batch of up to BATCH_SIZE tasks
