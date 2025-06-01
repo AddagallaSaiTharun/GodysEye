@@ -279,7 +279,7 @@ async def register_missing_person(
         logger.info("Missing person record stored in database: %s", missing_person_id)
 
         # Store vector in external vector DB and fetch possible matches
-        potential_matches = store_and_search_missing(person_id=missing_person_id, query_vector=face_vector,max_distance=0.1)
+        potential_matches = store_and_search_missing(person_id=missing_person_id, query_vector=face_vector,max_distance=0.25)
         logger.info(f"Stored face vector and retrieved {len(potential_matches)} potential matches")
         d = {}
         for match in potential_matches:

@@ -108,7 +108,7 @@ def search_matches(query_vector: list[float],
                 "score": dist,
                 "box": [md["x"], md["y"], md["w"], md["h"]]
             })
-    return matches
+    return sorted(matches,key=lambda x: x["timestamp"])
 
 
 def store_and_search_missing(person_id: str,
