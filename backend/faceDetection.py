@@ -99,7 +99,8 @@ def register_user(user: RegisterUser, db: Session = Depends(get_db)):
 
         logger.info("User registered successfully: %s", new_user.email)
         return {"message": "User registered successfully."}
-
+    except HTTPException as http_err:
+        raise http_err
     except SQLAlchemyError as db_err:
         logger.error("Database error during user registration: %s", db_err)
         db.rollback()
@@ -177,7 +178,16 @@ def login_user(login_data: LoginUser, db: Session = Depends(get_db)):
                 "email": user_in_db.email
             }
         }
+    except HTTPException as http_err:
+        raise http_err
 
+    except SQLAlchemyError as err:
+        logger.error(f"Database error during login for email {login_data.email}: {str(err)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Database error: {str(err)}"
+        )
+    
     except Exception as err:
         logger.error(f"Unexpected error during login for email {login_data.email}: {str(err)}")
         raise HTTPException(
@@ -309,7 +319,9 @@ async def register_missing_person(
             "message": "Missing person registered successfully.",
             "missing_person_id": missing_person_id
         }
-
+    except HTTPException as http_err:
+        raise http_err
+    
     except Exception as ex:
         logger.exception("Unexpected error occurred during missing person registration.")
         raise HTTPException(
@@ -521,7 +533,7 @@ async def upload_video_only(
         frame_extractor = Video_FramesStorage(detection_model=detector_model)
 
         logger.info(f"Beginning frame extraction.")
-        extraction_success = frame_extractor.extract_frames(temp_video_path,frame_skip)
+        extraction_success = await frame_extractor.extract_frames(temp_video_path,frame_skip)
 
         if not extraction_success:
             logger.error(f"Frame extraction failed for video: {video_file.filename}")
@@ -555,7 +567,9 @@ async def upload_video_only(
                 "camera_id": frame_extractor.cam_id
             }
         )
-
+    except HTTPException as http_err:
+        raise http_err
+    
     except Exception as err:
         logger.exception(f"Error occurred while processing video: {str(err)}")
         raise HTTPException(

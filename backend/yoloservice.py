@@ -54,7 +54,7 @@ async def bounding_boxes(
     If `padding` is provided, x2 and y2 are increased by padding.
     """
     img = pil_from_uploadfile(image)
-    results = yolo(img)
+    results = yolo(img,verbose=False)
     # results[0].boxes.xyxy is a torch.Tensor of shape (N, 4)
     raw_boxes = results[0].boxes.xyxy.cpu().numpy().tolist()
 
@@ -119,7 +119,7 @@ async def vectorize_faces(
     4) Return a list of embeddings.
     """
     img = pil_from_uploadfile(image)
-    results = yolo(img)
+    results = yolo(img,verbose=False)
     raw_boxes = results[0].boxes.xyxy.cpu().numpy().tolist()
 
     if padding is not None:
