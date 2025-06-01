@@ -248,6 +248,13 @@ class Video_FramesStorage:
                     )
                     batch_tasks.append(t)
                 frame_id += 1
+
+            if not batch_tasks:
+                if not ret:
+                    break
+                else:
+                    continue
+
             # 2. Process that batch “as they finish”
             for fut in asyncio.as_completed(batch_tasks):
                 try:
