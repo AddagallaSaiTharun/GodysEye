@@ -212,7 +212,7 @@ async def vectorize_faces(
         face_crops
     )
 
-    return {"vectors": batch_embeddings}
+    return {"vectors": batch_embeddings, "boxes": raw_boxes}
 
 
 # ─── If run as a script, launch Uvicorn with multiple workers ─────────────────────
