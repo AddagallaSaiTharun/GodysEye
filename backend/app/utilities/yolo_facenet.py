@@ -58,19 +58,40 @@ import io
 import base64
 from typing import List, Optional
 
+import numpy as np 
+import cv2
+import json         
+
 import httpx
 from PIL import Image
 from app.utilities.logger_config import logger
+from app.utilities import config
 
 class Model:
-    def __init__(self, base_url: str = "http://localhost:8000"):
+    def __init__(self, base_url: str = config.YOLO_SERVICE_URL):
         self.base_url = base_url.rstrip("/")
-        self._client = httpx.AsyncClient(timeout=30)
+        self._client = httpx.AsyncClient()
+
+    # async def _image_to_bytes(self, image: Image.Image) -> bytes:
+    #     buf = io.BytesIO()
+    #     image.save(buf, format="JPEG")
+    #     return buf.getvalue()
 
     async def _image_to_bytes(self, image: Image.Image) -> bytes:
-        buf = io.BytesIO()
-        image.save(buf, format="JPEG")
-        return buf.getvalue()
+        # 1) Convert PIL→NumPy (H×W×3 in RGB)
+        arr = np.array(image.convert("RGB")) # just changing to rgb cuz could be png/rgba 
+
+        # 2) Convert RGB→BGR (cv2 expects BGR)
+        bgr = arr[:, :, ::-1]
+
+        # 3) Encode to JPEG in memory
+        success, jpeg_buf = cv2.imencode(".jpg", bgr)
+        if not success:
+            raise RuntimeError("Failed to JPEG‐encode image via OpenCV")
+
+        # 4) Return raw bytes
+        return jpeg_buf.tobytes()
+
 
     async def bounding_boxes(
         self,
@@ -111,7 +132,6 @@ class Model:
         """
         img_bytes = await self._image_to_bytes(image)
         # HTTP form: 'boxes' must be a JSON string
-        import json
         boxes_str = json.dumps(boxes)
 
         files = {"image": ("image.jpg", img_bytes, "image/jpeg")}

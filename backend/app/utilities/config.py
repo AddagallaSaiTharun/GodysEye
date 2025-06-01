@@ -5,3 +5,4 @@ FRAME_DIR="databases/video_db"
 ACCESS_TOKEN_EXPIRE_MINUTES=60
 VUE_DIST_DIR="./dist"
 MODEL_PATH="C:/Users/tharu/OneDrive/Desktop/godseye/backend/yolov11l-face.pt" 
+YOLO_SERVICE_URL="http://localhost:8000"
