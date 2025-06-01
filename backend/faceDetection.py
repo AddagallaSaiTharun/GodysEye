@@ -24,7 +24,7 @@ from app.utilities.logger_config import logger
 from datetime import timedelta
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
-from app.utilities.vector_storage import store_and_search_missing
+from app.utilities.vector_storage import get_vector, search_matches, store_and_search_missing, store_missing
 
 
 
@@ -478,7 +478,8 @@ async def get_missing_person_frame(
 async def upload_video_only(
     user_id: str = Depends(get_current_user),
     video_file: UploadFile = File(..., description="MP4 video file to be uploaded."),
-    frame_skip:int = Form(..., description="Number of frames to skip between extractions")
+    frame_skip:int = Form(..., description="Number of frames to skip between extractions"),
+    db: Session = Depends(get_db)
 ):
     """
     Upload and process an MP4 video to extract frames for facial recognition.
@@ -516,11 +517,11 @@ async def upload_video_only(
         logger.info(f"Video uploaded and saved to: {temp_video_path}")
 
         # Initialize detection model and extract frames
-        detector_model = Model()
+        detector_model = Model(config.MODEL_PATH)
         frame_extractor = Video_FramesStorage(detection_model=detector_model)
 
         logger.info(f"Beginning frame extraction.")
-        extraction_success = await frame_extractor.extract_frames(temp_video_path,frame_skip)
+        extraction_success = frame_extractor.extract_frames(temp_video_path,frame_skip)
 
         if not extraction_success:
             logger.error(f"Frame extraction failed for video: {video_file.filename}")
@@ -529,14 +530,34 @@ async def upload_video_only(
                 detail="Frame extraction failed."
             )
 
-        logger.info(f"Video processed successfully. Camera ID: {frame_extractor.cam_id}")
-        return {
-            "message": "Video processed successfully.",
-            "camera_id": frame_extractor.cam_id
-        }
+        logger.info(f"[User: {user_id}] Video processed successfully. Camera ID: {frame_extractor.cam_id}")
+        missing_persons = db.query(MissingPersons).all()
+        logger.info(f"Found {len(missing_persons)} missing persons to match against.")
+        for missing_person in missing_persons:
+            face_vector = get_vector(uuid=missing_person.missing_person_id)
+            potential_matches = search_matches(query_vector=face_vector, top_k=2000, max_distance=0.25)
+            for i,match in enumerate(potential_matches):
+                frame = MissingPersonsFrame(
+                    missing_person_id=missing_person.missing_person_id,
+                    missing_frame_id=i,
+                    frame_id=match["frame_id"],
+                    cam_id=match["cam_id"],
+                    timestamp=match["timestamp"],
+                    box=match["box"],
+                    score=match['score']
+                )
+                db.merge(frame)
+            db.commit()
+        return JSONResponse(
+            status_code=status.HTTP_202_ACCEPTED,
+            content={
+                "message": "Video processed successfully.",
+                "camera_id": frame_extractor.cam_id
+            }
+        )
 
     except Exception as err:
-        logger.exception(f"Error occurred while processing video: {str(err)}",exc_info=True,stack_info=True)
+        logger.exception(f"Error occurred while processing video: {str(err)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Internal server error: {str(err)}"

@@ -120,3 +120,11 @@ def store_and_search_missing(person_id: str,
     """
     store_missing(person_id, query_vector)
     return search_matches(query_vector, top_k=top_k, max_distance=max_distance)
+
+def get_vector(uuid: str) -> list[dict]:
+    results = missing_collection.get(
+        where={"person_id": uuid},
+        include=["embeddings", "metadatas"],
+    )
+    logger.info(f"Retrieved vector for UUID {uuid}: {results}")
+    return results.get("embeddings", [[]])[0]
