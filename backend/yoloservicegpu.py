@@ -46,6 +46,7 @@ class VectorFaceResponse(BaseModel):
 
 class VectorFacesResponse(BaseModel):
     vectors: List[List[float]]
+    boxes: List[List[float]]
 
 
 def pil_from_uploadfile(file: UploadFile) -> Image.Image:
