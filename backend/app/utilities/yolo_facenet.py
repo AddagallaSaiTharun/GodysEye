@@ -197,8 +197,9 @@ class Model:
         resp.raise_for_status()
         payload = resp.json()
         vectors = payload["vectors"]
-        logger.debug(f"Received {len(vectors)} face vectors")
-        return vectors
+        boxes = payload["boxes"]
+        logger.debug(f"Received {len(vectors)} face vectors and {len(boxes)} boxes")
+        return vectors, boxes
 
     async def close(self):
         """Close the underlying HTTPX client."""

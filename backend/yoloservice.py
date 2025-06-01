@@ -137,7 +137,7 @@ async def vectorize_faces(
             embed = facenet(tensor)
         embeddings.append(embed.cpu().numpy().squeeze().tolist())
 
-    return {"vectors": embeddings}
+    return {"vectors": embeddings, "boxes": raw_boxes}
 
 
 if __name__ == "__main__":
