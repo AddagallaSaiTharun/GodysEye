@@ -236,7 +236,7 @@ class Video_FramesStorage:
                     frame_filename = os.path.join(self.FRAME_DIR, f"frame_{frame_id}.jpeg")
                     frame_copy = frame.copy()
 
-                    await semaphore.acquire()
+                    # await semaphore.acquire()
                     t = asyncio.create_task(
                         self._vectorize_with_semaphore(
                             semaphore=semaphore,
