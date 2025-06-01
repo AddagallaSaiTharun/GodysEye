@@ -266,8 +266,8 @@ async def register_missing_person(
         # Generate unique ID and extract face vector
         missing_person_id = str(uuid.uuid4())
         face_model = Model()
-        face_vector = await face_model.vectorize_faces(image)
-        face_vector = face_vector[0]
+        vector,boxes = await face_model.vectorize_faces(image)
+        face_vector = vector[0]
         logger.info(f"Face vector: {face_vector}")
 
         if face_vector is None:
@@ -289,7 +289,7 @@ async def register_missing_person(
         logger.info("Missing person record stored in database: %s", missing_person_id)
 
         # Store vector in external vector DB and fetch possible matches
-        potential_matches = store_and_search_missing(person_id=missing_person_id, query_vector=face_vector,max_distance=0.25)
+        potential_matches = store_and_search_missing(person_id=missing_person_id, query_vector=face_vector,max_distance=0.4)
         logger.info(f"Stored face vector and retrieved {len(potential_matches)} potential matches")
         d = {}
         for match in potential_matches:
@@ -529,7 +529,7 @@ async def upload_video_only(
         logger.info(f"Video uploaded and saved to: {temp_video_path}")
 
         # Initialize detection model and extract frames
-        detector_model = Model(config.MODEL_PATH)
+        detector_model = Model()
         frame_extractor = Video_FramesStorage(detection_model=detector_model)
 
         logger.info(f"Beginning frame extraction.")
